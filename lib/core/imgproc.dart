@@ -808,6 +808,22 @@ class ImgProc {
     return result;
   }
 
+//  Imgproc.HoughCircles(gray, circles, Imgproc., 1.0,
+//                 (double)gray.rows()/16, // change this value to detect circles with different distances to each other
+//                 100.0, 30.0, 1, 30); // change the last two parameters
+  // (min_radius & max_radius) to detect larger circles
+
+// (	InputArray 	image,
+// OutputArray 	circles,
+// int 	method,
+// double 	dp,
+// double 	minDist,
+// double 	param1 = 100,
+// double 	param2 = 100,
+// int 	minRadius = 0,
+// int 	maxRadius = 0
+// )
+
   static Future<dynamic> houghCircles(
       Uint8List byteData,
       int method,
@@ -839,5 +855,55 @@ class ImgProc {
 
     /// Function returns the set String as result, use for debugging
     return result;
+  }
+
+  static Future<dynamic> findContours(
+      Uint8List byteData, int mode, int method) async {
+    /// Variable to store operation result
+    final dynamic result = await _channel.invokeMethod(
+        'findContours', {'byteData': byteData, 'mode': mode, 'method': method});
+
+    List<Uint8List> list = new List<Uint8List>();
+    print(result.length);
+    // print(result);
+    int i = 0;
+    while (i < result.length) {
+      int len = (result[i + 3] << 24) |
+          (result[i + 2] << 16) |
+          (result[i + 1] << 8) |
+          (result[i]);
+
+      // print(len);
+      i += 4;
+
+      if (len == 0) continue;
+
+      Uint8List arr = new Uint8List(len);
+      for (var j = 0; j < len; j++) {
+        arr[j] = result[i++];
+      }
+
+      list.add(arr);
+    }
+
+    print(list.length);
+    return list;
+
+    print("BEGIN RESULT from OPENCV findContours:");
+    // print(result[0]);
+    return result;
+// Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE
+// 	int 	mode,
+// int 	method,
+// res =  await ImgProc.cvtColor(await file.readAsBytes(), 6) ;
+// res =  await ImgProc.canny(await res, 40, 60) ;
+
+//  canny_output = cv.Canny(src_gray, threshold, threshold * 2)
+// _, contours, hierarchy = cv.findContours(canny_output, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+// Imgproc.Canny(srcGray, cannyOutput, threshold, threshold * 2);
+// List<MatOfPoint> contours = new ArrayList<>();
+// Mat hierarchy = new Mat();
+// Imgproc.findContours(cannyOutput, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
   }
 }

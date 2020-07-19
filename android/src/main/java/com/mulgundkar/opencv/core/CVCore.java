@@ -11,11 +11,18 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.core.MatOfByte;
 import org.opencv.core.MatOfInt;
+import org.opencv.core.MatOfPoint;
 import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.imgproc.Imgproc;
+import org.opencv.core.Rect;
+ 
+// import org.opencv.imgproc.Imgproc;
+import org.opencv.imgproc.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.*; 
+import java.lang.*; 
+// import java.io.*; 
 
 import androidx.annotation.NonNull;
 import io.flutter.Log;
@@ -610,6 +617,7 @@ public class CVCore {
     @SuppressLint("MissingPermission")
     public byte[] houghCircles(byte[] byteData, int method, double dp, double minDist, double param1, double param2, int minRadius, int maxRadius, int centerWidth, String centerColor, int circleWidth, String circleColor) {
         byte[] byteArray = new byte[0];
+      System.out.println("MissingPermissionMissingPermissionMissingPermissionMissingPermissionMissingPermissionMissingPermission");
         try {
             Mat circles = new Mat();
             // Decode image from input byte array
@@ -647,4 +655,94 @@ public class CVCore {
         }
         return byteArray;
     }
+
+    @SuppressLint("MissingPermission")
+    public byte[] findContours(byte[] byteData, int mode, int method) {
+        byte[] byteArrays = new byte[1];
+        
+        try { 
+            Mat cannyOutput = new Mat();
+
+            // Decode image from input byte array
+            Mat src = Imgcodecs.imdecode(new MatOfByte(byteData), Imgcodecs.IMREAD_UNCHANGED);    
+            Imgproc.cvtColor(src, cannyOutput, Imgproc.COLOR_BGR2GRAY);
+            Imgproc.Canny(cannyOutput, cannyOutput, 40, 60);//threshold, threshold * 2
+
+            final Size kernelSize = new Size(11, 11);
+            final Point anchor = new Point(-1, -1);
+            final int iterations = 1; 
+            Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, kernelSize); 
+           
+            Imgproc.dilate(cannyOutput, cannyOutput, kernel, anchor, iterations);
+            Imgproc.erode(cannyOutput, cannyOutput, kernel, anchor, iterations);
+
+            List<MatOfPoint> contours = new ArrayList<>();
+            Mat hierarchy = new Mat();
+            Imgproc.findContours(cannyOutput, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+             
+            byteArrays = new byte[contours.size()]; 
+            sortContoursByArea(contours);
+           
+            byte[][] bytes = new byte[contours.size()][];
+            // var bytes = new Byte[contours.size()][];
+            int len_bytes=0;
+            for (int i = 0; i < contours.size(); i++) {
+                Rect rectCrop = Imgproc.boundingRect(contours.get(i)); 
+                Mat image_roi = new Mat(src, rectCrop);
+                
+                MatOfByte matOfByte = new MatOfByte();
+                //Converting the Mat object to MatOfByte
+                Imgcodecs.imencode(".png", image_roi, matOfByte); 
+                bytes[i]= matOfByte.toArray();
+                len_bytes+= bytes[i].length;
+                // byteArrays = matOfByte.toArray(); 
+                // if(i==0)  break;
+            }
+            
+            // return byteArrays;
+            byte[] merged_bytes=new byte[len_bytes+bytes.length*4];
+            int index=0;
+            for (int i = 0; i < bytes.length;i++){
+                byte[] arr=bytes[i];
+                int arr_len=0;
+                if(arr!=null) arr_len = arr.length;
+
+                merged_bytes[index++]=(byte)(arr_len >> 0);
+                merged_bytes[index++]=(byte)(arr_len >> 8);
+                merged_bytes[index++]=(byte)(arr_len >> 16);  
+                merged_bytes[index++]=(byte)(arr_len >> 24);  
+                
+                for (int j = 0; j <arr_len;j++) 
+                  merged_bytes[index++]=arr[j];  
+            }
+                       
+            return merged_bytes;
+
+        } catch (Exception e) {
+            System.out.println("OpenCV Error: " + e.toString());
+        }
+        return byteArrays;
+    }
+
+    public   void sortContoursByArea(List<MatOfPoint> contours) {
+        Collections.sort(contours, new Comparator<MatOfPoint>() {
+    
+          @Override
+          public int compare(MatOfPoint a, MatOfPoint b) {
+            // Not sure how expensive this will be computationally as the
+            // area is computed for each comparison
+            double areaA = Imgproc.contourArea(a);
+            double areaB = Imgproc.contourArea(b);
+    
+            // Change sign depending on whether your want sorted small to big
+            // or big to small
+            if (areaA > areaB) {
+              return -1;
+            } else if (areaA < areaB) {
+              return 1;
+            }
+            return 0;
+          }
+        });
+      }
 }
